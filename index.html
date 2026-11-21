@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Velvet Room · Blackjack</title>
+<style>
+:root{color-scheme:dark;--gold:#dfbe77;--ink:#faedd7;--muted:#c4b49e}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(ellipse at 50% 0,#471c2b,#170e16 55%,#100d13);color:var(--ink);font:16px system-ui,sans-serif;min-height:100vh}
+header,footer{max-width:1120px;margin:auto;padding:22px 26px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{font:700 21px Georgia;letter-spacing:.04em}.brand span,summary,a{color:var(--gold)}
+summary{cursor:pointer}details{position:relative}details p{position:absolute;right:0;z-index:2;width:min(300px,85vw);padding:18px;background:#241821;border:1px solid #776145;border-radius:10px;line-height:1.55;margin:12px 0}
+main{max-width:980px;margin:auto;padding:0 18px;text-align:center}
+.eyebrow,.label{color:var(--gold);letter-spacing:.2em;font-size:.875rem;text-transform:uppercase;font-weight:700}
+.eyebrow{margin:12px 0 4px}h1{font:normal clamp(52px,9vw,96px)/.98 Georgia;margin:0 0 19px;letter-spacing:-.055em;text-shadow:0 4px 24px #0e080b}
+.table{border:3px solid #997145;border-radius:42px;padding:18px 12px 20px;background:radial-gradient(ellipse at center,#245344,#103b30 62%,#092922);box-shadow:0 0 0 5px #382627,0 20px 55px #09070ab8,inset 0 0 45px #081d19;position:relative;isolation:isolate}
+.table::before{content:'';position:absolute;inset:8px;border:1px solid #cfb27462;border-radius:31px;pointer-events:none;z-index:-1}
+.label{margin:4px 0 10px}.total{color:var(--ink);letter-spacing:0;border:1px solid #d3bd7966;border-radius:20px;padding:2px 9px;margin-left:6px}
+.hand{display:flex;justify-content:center;align-items:center;min-height:106px;padding:0 10px}
+.card{display:grid;place-items:center;position:relative;flex:0 0 auto;width:74px;aspect-ratio:226/314;border-radius:7px;background:#faf5e8;color:#24202b;box-shadow:0 6px 12px #061410b3;font:700 21px Georgia}
+.card+.card{margin-left:8px}.hand.many .card+.card{margin-left:-40px}
+.card img{position:absolute;inset:0;width:100%;height:100%;border-radius:inherit}.card.red{color:#a12735}
+.back,.slot{background:repeating-linear-gradient(45deg,#6c2940 0 3px,#502033 3px 6px);color:#f0ce83;border:4px solid #e0bd72;font-size:28px}
+.slot{background:#132e24aa;border:1px dashed #bda76a88;box-shadow:none;color:#bda76aaa}
+.status{min-height:62px;display:grid;place-content:center;gap:3px;margin:5px auto;color:var(--muted)}.status strong{font:normal 25px Georgia;color:var(--ink)}.status span{font-size:.9rem}
+.controls{margin-top:18px;display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
+button{font:700 15px system-ui;min-height:44px;padding:0 20px;border:1px solid #d1b47088;border-radius:7px;background:#0c2b23;color:var(--ink);cursor:pointer}button.primary{background:linear-gradient(#f3d99b,#cfaa60);color:#281a16;border-color:#efd494}button:disabled{opacity:.45;cursor:default}button:hover:not(:disabled){filter:brightness(1.16)}:focus-visible{outline:2px solid #fff3d2;outline-offset:3px}
+footer{font-size:.84rem;color:var(--muted);justify-content:center;flex-wrap:wrap;text-align:center}
+@media(max-width:480px){header{padding:18px}.table{border-radius:29px}.table::before{border-radius:21px}.card{width:60px}.hand{min-height:85px}.hand.many .card+.card{margin-left:-43px}button{padding:0 15px}}
+</style>
+<header><div class="brand"><span aria-hidden="true">♠</span> The Velvet Room</div><details><summary>How to play</summary><p>Get closer to 21 than the dealer without going over. Hit to draw a card, or stand to keep your total. Aces count as 1 or 11. The dealer stands on all 17s. An ace and a ten-value card on the opening deal make blackjack.</p></details></header>
+<main>
+<p class="eyebrow">Las Vegas · The card room</p><h1>Blackjack</h1>
+<section class="table" aria-label="Blackjack table">
+<h2 class="label">Dealer <span class="total" id="dealerTotal">–</span></h2><div class="hand" id="dealerCards"></div>
+<div class="status" role="status"><strong id="message"></strong><span id="hint"></span></div>
+<h2 class="label">Your hand <span class="total" id="playerTotal">–</span></h2><div class="hand" id="playerCards"></div>
+<div class="controls"><button id="deal" class="primary">Deal cards</button><button id="hit" disabled>Hit</button><button id="stand" disabled>Stand</button></div>
+</section>
+</main>
+<footer><span>Free play</span><span aria-hidden="true">♦</span><a href="https://deckofcardsapi.com/">Card artwork</a></footer>
+<script>
+const get = id => document.getElementById(id);
+const ranks = 'A234567890JQK';
+const suits = {S:'♠',H:'♥',D:'♦',C:'♣'};
+const cards = Object.keys(suits).flatMap(suit => [...ranks].map(rank => rank + suit));
+let deck, player = [], dealer = [], phase = 'ready';
+function score(hand) {
+  let aces = 0;
+  let total = 0;
+  for (const [rank] of hand) {
+    if (rank === 'A') aces++;
+    total += rank === 'A' ? 11 : Number(rank) || 10;
+  }
+  while (total > 21 && aces > 0) {
+    total -= 10;
+    aces--;
+  }
+  return total;
+}
+function drawHand(id, hand, hidden = false) {
+  const target = get(id);
+  target.classList.toggle('many', hand.length > 4);
+  const visible = hand.length ? hand.map((card, index) => hidden && index === 1 ? 'back' : card) : ['slot','slot'];
+  target.replaceChildren(...visible.map(code => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    if (code === 'back' || code === 'slot') {
+      card.classList.add(code);
+      card.textContent = '♠';
+      if (code === 'slot') card.setAttribute('aria-hidden','true');
+      else {
+        card.setAttribute('role','img');
+        card.setAttribute('aria-label','Face-down card');
+      }
+      return card;
+    }
+    const [rank,suit] = code;
+    const label = (rank === '0' ? '10' : rank) + ' ' + suits[suit];
+    const fallback = document.createElement('span');
+    fallback.textContent = label;
+    fallback.setAttribute('aria-hidden','true');
+    card.setAttribute('role','img');
+    card.setAttribute('aria-label',label);
+    if ('HD'.includes(suit)) card.classList.add('red');
+    const image = new Image();
+    image.alt = '';
+    image.addEventListener('error', () => image.remove());
+    image.src = 'https://deckofcardsapi.com/static/img/' + code + '.png';
+    card.append(fallback,image);
+    return card;
+  }));
+}
+function render(message, hint) {
+  const playing = phase === 'playing';
+  drawHand('dealerCards',dealer,playing);
+  drawHand('playerCards',player);
+  get('dealerTotal').textContent = dealer.length ? score(playing ? dealer.slice(0,1) : dealer) : '–';
+  get('playerTotal').textContent = player.length ? score(player) : '–';
+  get('message').textContent = message;
+  get('hint').textContent = hint;
+  get('deal').disabled = playing;
+  get('deal').textContent = phase === 'done' ? 'Deal again' : 'Deal cards';
+  get('hit').disabled = get('stand').disabled = !playing;
+}
+function finish(message) {
+  phase = 'done';
+  render(message,'Deal again for a fresh hand.');
+  get('deal').focus();
+}
+function stand() {
+  if (phase !== 'playing') return;
+  while (score(dealer) < 17) dealer.push(deck.pop());
+  const a = score(player), b = score(dealer);
+  finish(b > 21 ? 'Dealer busts. You win!' : a > b ? 'You win!' : a < b ? 'Dealer wins.' : 'Push. It’s a tie.');
+}
+get('deal').onclick = () => {
+  deck = [...cards];
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [deck[i],deck[j]] = [deck[j],deck[i]];
+  }
+  player = [deck.pop()];
+  dealer = [deck.pop()];
+  player.push(deck.pop());
+  dealer.push(deck.pop());
+  phase = 'playing';
+  const p = score(player) === 21, d = score(dealer) === 21;
+  if (p || d) return finish(p && d ? 'Double blackjack. Push.' : p ? 'Blackjack! You win.' : 'Dealer has blackjack.');
+  render('Your move','Hit for another card or stand to keep your hand.');
+  get('hit').focus();
+};
+get('hit').onclick = () => {
+  if (phase !== 'playing') return;
+  player.push(deck.pop());
+  if (score(player) > 21) return finish('Bust. Dealer wins.');
+  if (score(player) === 21) return stand();
+  render('Your move','Hit for another card or stand to keep your hand.');
+};
+get('stand').onclick = stand;
+render('Take a seat','Deal the cards to play against the house.');
+</script>
+</html>
