@@ -31,21 +31,33 @@ button{font:700 15px system-ui;min-height:44px;padding:0 20px;border:1px solid #
 .rail{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:10px 18px;margin:16px 0 0;color:#f0d8a6;font-size:.85rem}.rail button{padding:0 10px}.table{background:repeating-linear-gradient(120deg,#ffffff04 0 1px,transparent 1px 4px),radial-gradient(ellipse at center,#285a49,#103b30 62%,#092922)}
 footer{font-size:.84rem;color:var(--muted);justify-content:center;flex-wrap:wrap;text-align:center}
 @media(max-width:480px){header{padding:18px}.table{border-radius:29px}.table::before{border-radius:21px}.card{width:60px}.hand{min-height:85px}.hand.many .card+.card{margin-left:-43px}button{padding:0 15px}}
+dialog{color:var(--ink);background:#241821;border:1px solid var(--gold);border-radius:18px;padding:26px;text-align:center;max-width:calc(100% - 36px);box-shadow:0 20px 60px #000a}
+dialog::backdrop{background:#100a12d9}dialog h2{margin:0 0 18px;font:normal 26px Georgia}dialog button{margin:3px}.hand{direction:ltr}details p{inset-inline-end:0;right:auto}[dir=rtl] .label,[dir=rtl] .eyebrow{letter-spacing:0}[dir=rtl] h1{font-family:Tahoma,Arial,sans-serif;letter-spacing:0}
 </style>
-<header><div class="brand"><span aria-hidden="true">♠</span> The Velvet Room</div><details><summary>How to play</summary><p>Get closer to 21 than the dealer without going over. Hit to draw a card, or stand to keep your total. Aces count as 1 or 11. The dealer uses a six-deck shoe and reshuffles between hands when fewer than 60 cards remain. The dealer stands on all 17s. An ace and a ten-value card on the opening deal make blackjack.</p></details></header>
+<dialog id="language" aria-labelledby="languageTitle">
+<h2 id="languageTitle">Choose your language<br><span lang="fa" dir="rtl">زبان خود را انتخاب کنید</span></h2>
+<button class="primary" id="english" lang="en">English</button>
+<button class="primary" id="persian" lang="fa" dir="rtl">فارسی</button>
+</dialog>
+<header><div class="brand"><span aria-hidden="true">♠</span> <span data-label="The Velvet Room">The Velvet Room</span></div><details><summary><span data-label="How to play">How to play</span></summary><p><span data-label="Get closer to 21 than the dealer without going over. Hit to draw a card, or stand to keep your total. Aces count as 1 or 11. The dealer uses a six-deck shoe and reshuffles between hands when fewer than 60 cards remain. The dealer stands on all 17s. An ace and a ten-value card on the opening deal make blackjack.">Get closer to 21 than the dealer without going over. Hit to draw a card, or stand to keep your total. Aces count as 1 or 11. The dealer uses a six-deck shoe and reshuffles between hands when fewer than 60 cards remain. The dealer stands on all 17s. An ace and a ten-value card on the opening deal make blackjack.</span></p></details><button id="languageSwitch" aria-label="English / فارسی">English / فارسی</button></header>
 <main>
-<p class="eyebrow">Las Vegas · The card room</p><h1>Blackjack</h1>
+<p class="eyebrow"><span data-label="Las Vegas · The card room">Las Vegas · The card room</span></p><h1><span data-label="Blackjack">Blackjack</span></h1>
 <section class="table" aria-label="Blackjack table">
-<h2 class="label">Dealer <span class="total" id="dealerTotal">–</span></h2><div class="hand" id="dealerCards"></div>
+<h2 class="label"><span data-label="Dealer">Dealer</span> <span class="total" id="dealerTotal">–</span></h2><div class="hand" id="dealerCards"></div>
 <div class="status" role="status"><strong id="message"></strong><span id="hint"></span></div>
-<h2 class="label">Your hand <span class="total" id="playerTotal">–</span></h2><div class="hand" id="playerCards"></div>
-<div class="controls"><button id="deal" class="primary">Deal cards</button><button id="hit" disabled>Hit</button><button id="stand" disabled>Stand</button></div>
-<div class="rail"><span id="shoe"></span><span id="record"></span><button id="sound" aria-pressed="false">Sound off</button></div>
+<h2 class="label"><span data-label="Your hand">Your hand</span> <span class="total" id="playerTotal">–</span></h2><div class="hand" id="playerCards"></div>
+<div class="controls"><button id="deal" class="primary"><span data-label="Deal cards">Deal cards</span></button><button id="hit" disabled><span data-label="Hit">Hit</span></button><button id="stand" disabled><span data-label="Stand">Stand</span></button></div>
+<div class="rail"><span id="shoe"></span><span id="record"></span><button id="sound" aria-pressed="false"><span data-label="Sound off">Sound off</span></button></div>
 </section>
 </main>
-<footer><span>Free play</span><span aria-hidden="true">♦</span><a href="https://deckofcardsapi.com/">Card artwork</a></footer>
+<footer><span><span data-label="Free play">Free play</span></span><span aria-hidden="true">♦</span><a href="https://deckofcardsapi.com/"><span data-label="Card artwork">Card artwork</span></a></footer>
 <script>
 const get = id => document.getElementById(id);
+const persian = {"How to play": "راهنمای بازی", "The Velvet Room": "اتاق مخملی", "Las Vegas · The card room": "لاس‌وگاس · سالن بازی", "Blackjack": "بلک‌جک", "Dealer": "دیلر", "Your hand": "دست شما", "Deal cards": "پخش کارت", "Hit": "کارت بگیر", "Stand": "کافی است", "Sound off": "صدا خاموش", "Sound on": "صدا روشن", "Free play": "بازی رایگان", "Card artwork": "تصاویر کارت‌ها", "Deal again": "دست بعدی", "Six-deck shoe": "کفشک شش‌دسته‌ای", "Take a seat": "بفرمایید سر میز", "Deal the cards to play against the house.": "برای بازی با دیلر، کارت‌ها را پخش کنید.", "Cards on the table": "کارت‌ها روی میز", "The dealer is dealing.": "دیلر در حال پخش کارت‌هاست.", "Your move": "نوبت شماست", "Hit for another card or stand to keep your hand.": "کارت دیگری بگیرید یا با همین دست ادامه دهید.", "Dealer reveals": "دیلر کارت را رو می‌کند", "Dealer draws": "دیلر کارت می‌کشد", "The house stands on all 17s.": "دیلر روی هر نوع ۱۷ می‌ایستد.", "Deal again for a fresh hand.": "برای شروع دست بعدی دوباره کارت پخش کنید.", "Dealer busts. You win!": "دیلر از ۲۱ گذشت. شما بردید!", "You win!": "شما بردید!", "Dealer wins.": "دیلر برد.", "Push. It’s a tie.": "مساوی شد.", "Double blackjack. Push.": "هر دو بلک‌جک دارید. مساوی شد.", "Blackjack! You win.": "بلک‌جک! شما بردید.", "Dealer has blackjack.": "دیلر بلک‌جک دارد.", "Bust. Dealer wins.": "از ۲۱ گذشتید. دیلر برد.", "Face-down card": "کارت پشت‌ورو", "Get closer to 21 than the dealer without going over. Hit to draw a card, or stand to keep your total. Aces count as 1 or 11. The dealer uses a six-deck shoe and reshuffles between hands when fewer than 60 cards remain. The dealer stands on all 17s. An ace and a ten-value card on the opening deal make blackjack.": "بدون گذشتن از ۲۱، از دیلر به ۲۱ نزدیک‌تر شوید. برای دریافت کارت «کارت بگیر» و برای حفظ دست «کافی است» را بزنید. آس ۱ یا ۱۱ امتیاز دارد. دیلر از شش دسته کارت استفاده می‌کند. اگر کمتر از ۶۰ کارت بماند، پیش از دست بعدی کارت‌ها دوباره بُر می‌خورند. دیلر روی هر نوع ۱۷ می‌ایستد. آس و یک کارت ده‌امتیازی در دست اول، بلک‌جک است."};
+let locale = 'en';
+let currentMessage, currentHint;
+const t = value => locale === 'fa' ? persian[value] ?? value : value;
+const number = value => typeof value === 'number' ? value.toLocaleString(locale) : value;
 const ranks = 'A234567890JQK';
 const suits = {S:'♠',H:'♥',D:'♦',C:'♣'};
 const cards = Object.keys(suits).flatMap(suit => [...ranks].map(rank => rank + suit));
@@ -65,7 +77,7 @@ get('sound').onclick = async () => {
   }
   sound = !sound;
   get('sound').setAttribute('aria-pressed', String(sound));
-  get('sound').textContent = sound ? 'Sound on' : 'Sound off';
+  get('sound').textContent = t(sound ? 'Sound on' : 'Sound off');
   if (sound) cue(440);
 };
 function cue(pitch = 240) {
@@ -121,7 +133,7 @@ function drawHand(id, hand, hidden = false) {
       if (code === 'slot') card.setAttribute('aria-hidden','true');
       else {
         card.setAttribute('role','img');
-        card.setAttribute('aria-label','Face-down card');
+        card.setAttribute('aria-label',t('Face-down card'));
       }
       return card;
     }
@@ -149,18 +161,20 @@ function drawHand(id, hand, hidden = false) {
   while (target.children.length > next.length) target.lastElementChild.remove();
 }
 function render(message, hint) {
+  currentMessage = message;
+  currentHint = hint;
   const playing = phase === 'playing';
   const concealed = playing || phase === 'opening';
   drawHand('dealerCards',dealer,concealed);
   drawHand('playerCards',player);
-  get('dealerTotal').textContent = dealer.length ? score(concealed ? dealer.slice(0,1) : dealer) : '–';
-  get('playerTotal').textContent = player.length ? score(player) : '–';
-  get('message').textContent = message;
-  get('hint').textContent = hint;
+  get('dealerTotal').textContent = number(dealer.length ? score(concealed ? dealer.slice(0,1) : dealer) : '–');
+  get('playerTotal').textContent = number(player.length ? score(player) : '–');
+  get('message').textContent = t(message);
+  get('hint').textContent = t(hint);
   get('deal').disabled = playing || phase === 'dealer' || phase === 'opening';
-  get('shoe').textContent = deck.length ? `${deck.length} cards in shoe` : 'Six-deck shoe';
-  get('record').textContent = `${record.win} won · ${record.loss} lost · ${record.push} tied`;
-  get('deal').textContent = phase === 'done' ? 'Deal again' : 'Deal cards';
+  get('shoe').textContent = deck.length ? (locale === 'fa' ? `${number(deck.length)} کارت در کفشک` : `${deck.length} cards in shoe`) : t('Six-deck shoe');
+  get('record').textContent = locale === 'fa' ? `${number(record.win)} برد · ${number(record.loss)} باخت · ${number(record.push)} مساوی` : `${record.win} won · ${record.loss} lost · ${record.push} tied`;
+  get('deal').textContent = t(phase === 'done' ? 'Deal again' : 'Deal cards');
   get('hit').disabled = get('stand').disabled = !playing;
 }
 function finish(outcome, message) {
@@ -222,5 +236,29 @@ get('hit').onclick = () => {
 };
 get('stand').onclick = stand;
 render('Take a seat','Deal the cards to play against the house.');
+const language = get('language');
+function chooseLanguage(next) {
+  locale = next;
+  document.documentElement.lang = next;
+  document.documentElement.dir = next === 'fa' ? 'rtl' : 'ltr';
+  document.title = t('The Velvet Room') + ' · ' + t('Blackjack');
+  document.querySelectorAll('[data-label]').forEach(label => {
+    label.textContent = t(label.dataset.label);
+  });
+  get('sound').textContent = t(sound ? 'Sound on' : 'Sound off');
+  const hidden = get('dealerCards').querySelector('[data-code="back"]');
+  if (hidden) hidden.setAttribute('aria-label', t('Face-down card'));
+  language.close();
+  render(currentMessage, currentHint);
+}
+get('english').onclick = () => chooseLanguage('en');
+get('persian').onclick = () => chooseLanguage('fa');
+get('languageSwitch').onclick = () => language.showModal();
+language.addEventListener('cancel', event => {
+  if (!languageChosen) event.preventDefault();
+});
+let languageChosen = false;
+language.addEventListener('close', () => { languageChosen = true; });
+language.showModal();
 </script>
 </html>
