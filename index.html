@@ -18,6 +18,9 @@ main{max-width:980px;margin:auto;padding:0 18px;text-align:center}
 .label{margin:4px 0 10px}.total{color:var(--ink);letter-spacing:0;border:1px solid #d3bd7966;border-radius:20px;padding:2px 9px;margin-left:6px}
 .hand{display:flex;justify-content:center;align-items:center;min-height:106px;padding:0 10px}
 .card{display:grid;place-items:center;position:relative;flex:0 0 auto;width:74px;aspect-ratio:226/314;border-radius:7px;background:#faf5e8;color:#24202b;box-shadow:0 6px 12px #061410b3;font:700 21px Georgia}
+@keyframes deal-in{from{opacity:0;transform:translate(42px,-34px) rotate(12deg) scale(.88)}to{opacity:1;transform:none}}
+.card.arriving{animation:deal-in 360ms cubic-bezier(.2,.75,.3,1) both;animation-delay:var(--delay,0ms)}
+@media(prefers-reduced-motion:reduce){.card.arriving{animation:none}}
 .card+.card{margin-left:8px}.hand.many .card+.card{margin-left:-40px}
 .card img{position:absolute;inset:0;width:100%;height:100%;border-radius:inherit}.card.red{color:#a12735}
 .back,.slot{background:repeating-linear-gradient(45deg,#6c2940 0 3px,#502033 3px 6px);color:#f0ce83;border:4px solid #e0bd72;font-size:28px}
@@ -62,9 +65,19 @@ function drawHand(id, hand, hidden = false) {
   const target = get(id);
   target.classList.toggle('many', hand.length > 4);
   const visible = hand.length ? hand.map((card, index) => hidden && index === 1 ? 'back' : card) : ['slot','slot'];
-  target.replaceChildren(...visible.map(code => {
+  const existing = [...target.children];
+  const opening = existing.length === 0;
+  const next = visible.map((code, index) => {
+    if (existing[index]?.dataset.code === code) return existing[index];
     const card = document.createElement('div');
     card.className = 'card';
+    card.dataset.code = code;
+    if (code !== 'slot') {
+      card.classList.add('arriving');
+      const delay = opening ? (index * 2 + Number(id === 'dealerCards')) * 85 :
+        id === 'dealerCards' ? Math.max(0, index - 1) * 110 : 0;
+      card.style.setProperty('--delay', delay + 'ms');
+    }
     if (code === 'back' || code === 'slot') {
       card.classList.add(code);
       card.textContent = '♠';
@@ -89,7 +102,14 @@ function drawHand(id, hand, hidden = false) {
     image.src = 'https://deckofcardsapi.com/static/img/' + code + '.png';
     card.append(fallback,image);
     return card;
-  }));
+  });
+  next.forEach((card, index) => {
+    const previous = target.children[index];
+    if (previous === card) return;
+    if (previous) previous.replaceWith(card);
+    else target.append(card);
+  });
+  while (target.children.length > next.length) target.lastElementChild.remove();
 }
 function render(message, hint) {
   const playing = phase === 'playing';
@@ -115,6 +135,8 @@ function stand() {
   finish(b > 21 ? 'Dealer busts. You win!' : a > b ? 'You win!' : a < b ? 'Dealer wins.' : 'Push. It’s a tie.');
 }
 get('deal').onclick = () => {
+  get('dealerCards').replaceChildren();
+  get('playerCards').replaceChildren();
   deck = [...cards];
   for (let i = deck.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
