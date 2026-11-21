@@ -28,10 +28,11 @@ main{max-width:980px;margin:auto;padding:0 18px;text-align:center}
 .status{min-height:62px;display:grid;place-content:center;gap:3px;margin:5px auto;color:var(--muted)}.status strong{font:normal 25px Georgia;color:var(--ink)}.status span{font-size:.9rem}
 .controls{margin-top:18px;display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
 button{font:700 15px system-ui;min-height:44px;padding:0 20px;border:1px solid #d1b47088;border-radius:7px;background:#0c2b23;color:var(--ink);cursor:pointer}button.primary{background:linear-gradient(#f3d99b,#cfaa60);color:#281a16;border-color:#efd494}button:disabled{opacity:.45;cursor:default}button:hover:not(:disabled){filter:brightness(1.16)}:focus-visible{outline:2px solid #fff3d2;outline-offset:3px}
+.rail{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:10px 18px;margin:16px 0 0;color:#f0d8a6;font-size:.85rem}.rail button{padding:0 10px}
 footer{font-size:.84rem;color:var(--muted);justify-content:center;flex-wrap:wrap;text-align:center}
 @media(max-width:480px){header{padding:18px}.table{border-radius:29px}.table::before{border-radius:21px}.card{width:60px}.hand{min-height:85px}.hand.many .card+.card{margin-left:-43px}button{padding:0 15px}}
 </style>
-<header><div class="brand"><span aria-hidden="true">♠</span> The Velvet Room</div><details><summary>How to play</summary><p>Get closer to 21 than the dealer without going over. Hit to draw a card, or stand to keep your total. Aces count as 1 or 11. The dealer stands on all 17s. An ace and a ten-value card on the opening deal make blackjack.</p></details></header>
+<header><div class="brand"><span aria-hidden="true">♠</span> The Velvet Room</div><details><summary>How to play</summary><p>Get closer to 21 than the dealer without going over. Hit to draw a card, or stand to keep your total. Aces count as 1 or 11. The dealer uses a six-deck shoe and reshuffles between hands when fewer than 60 cards remain. The dealer stands on all 17s. An ace and a ten-value card on the opening deal make blackjack.</p></details></header>
 <main>
 <p class="eyebrow">Las Vegas · The card room</p><h1>Blackjack</h1>
 <section class="table" aria-label="Blackjack table">
@@ -39,6 +40,7 @@ footer{font-size:.84rem;color:var(--muted);justify-content:center;flex-wrap:wrap
 <div class="status" role="status"><strong id="message"></strong><span id="hint"></span></div>
 <h2 class="label">Your hand <span class="total" id="playerTotal">–</span></h2><div class="hand" id="playerCards"></div>
 <div class="controls"><button id="deal" class="primary">Deal cards</button><button id="hit" disabled>Hit</button><button id="stand" disabled>Stand</button></div>
+<div class="rail"><span id="shoe"></span><span id="record"></span><button id="sound" aria-pressed="false">Sound off</button></div>
 </section>
 </main>
 <footer><span>Free play</span><span aria-hidden="true">♦</span><a href="https://deckofcardsapi.com/">Card artwork</a></footer>
@@ -47,7 +49,42 @@ const get = id => document.getElementById(id);
 const ranks = 'A234567890JQK';
 const suits = {S:'♠',H:'♥',D:'♦',C:'♣'};
 const cards = Object.keys(suits).flatMap(suit => [...ranks].map(rank => rank + suit));
-let deck, player = [], dealer = [], phase = 'ready';
+let deck = [], player = [], dealer = [], phase = 'ready';
+const record = {win:0, loss:0, push:0};
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+let audio;
+let sound = false;
+get('sound').onclick = async () => {
+  if (!sound) {
+    try {
+      audio ??= new AudioContext();
+      await audio.resume();
+    } catch {
+      return;
+    }
+  }
+  sound = !sound;
+  get('sound').setAttribute('aria-pressed', String(sound));
+  get('sound').textContent = sound ? 'Sound on' : 'Sound off';
+  if (sound) cue(440);
+};
+function cue(pitch = 240) {
+  if (!sound || audio.state !== 'running') return;
+  const oscillator = audio.createOscillator();
+  const gain = audio.createGain();
+  const time = audio.currentTime;
+  oscillator.type = 'triangle';
+  oscillator.frequency.setValueAtTime(pitch, time);
+  oscillator.frequency.exponentialRampToValueAtTime(pitch * .55, time + .09);
+  gain.gain.setValueAtTime(.065, time);
+  gain.gain.exponentialRampToValueAtTime(.001, time + .12);
+  oscillator.connect(gain).connect(audio.destination);
+  oscillator.start();
+  oscillator.stop(time + .12);
+}
+function pace(ms) {
+  return reducedMotion.matches ? Promise.resolve() : new Promise(resolve => setTimeout(resolve, ms));
+}
 function score(hand) {
   let aces = 0;
   let total = 0;
@@ -113,50 +150,74 @@ function drawHand(id, hand, hidden = false) {
 }
 function render(message, hint) {
   const playing = phase === 'playing';
-  drawHand('dealerCards',dealer,playing);
+  const concealed = playing || phase === 'opening';
+  drawHand('dealerCards',dealer,concealed);
   drawHand('playerCards',player);
-  get('dealerTotal').textContent = dealer.length ? score(playing ? dealer.slice(0,1) : dealer) : '–';
+  get('dealerTotal').textContent = dealer.length ? score(concealed ? dealer.slice(0,1) : dealer) : '–';
   get('playerTotal').textContent = player.length ? score(player) : '–';
   get('message').textContent = message;
   get('hint').textContent = hint;
-  get('deal').disabled = playing;
+  get('deal').disabled = playing || phase === 'dealer' || phase === 'opening';
+  get('shoe').textContent = deck.length ? `${deck.length} cards in shoe` : 'Six-deck shoe';
+  get('record').textContent = `${record.win} won · ${record.loss} lost · ${record.push} tied`;
   get('deal').textContent = phase === 'done' ? 'Deal again' : 'Deal cards';
   get('hit').disabled = get('stand').disabled = !playing;
 }
-function finish(message) {
+function finish(outcome, message) {
+  record[outcome]++;
   phase = 'done';
+  cue(outcome === 'win' ? 680 : outcome === 'push' ? 380 : 175);
   render(message,'Deal again for a fresh hand.');
   get('deal').focus();
 }
-function stand() {
+async function stand() {
   if (phase !== 'playing') return;
-  while (score(dealer) < 17) dealer.push(deck.pop());
+  phase = 'dealer';
+  cue();
+  render('Dealer reveals','The house stands on all 17s.');
+  await pace(520);
+  while (score(dealer) < 17) {
+    dealer.push(deck.pop());
+    cue();
+    render('Dealer draws','The house stands on all 17s.');
+    await pace(520);
+  }
   const a = score(player), b = score(dealer);
-  finish(b > 21 ? 'Dealer busts. You win!' : a > b ? 'You win!' : a < b ? 'Dealer wins.' : 'Push. It’s a tie.');
+  if (b > 21) finish('win','Dealer busts. You win!');
+  else if (a > b) finish('win','You win!');
+  else if (a < b) finish('loss','Dealer wins.');
+  else finish('push','Push. It’s a tie.');
 }
-get('deal').onclick = () => {
+get('deal').onclick = async () => {
+  if (phase === 'opening' || phase === 'playing' || phase === 'dealer') return;
   get('dealerCards').replaceChildren();
   get('playerCards').replaceChildren();
-  deck = [...cards];
-  for (let i = deck.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [deck[i],deck[j]] = [deck[j],deck[i]];
+  if (deck.length < 60) {
+    deck = Array.from({length:6}, () => cards).flat();
+    for (let i = deck.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [deck[i],deck[j]] = [deck[j],deck[i]];
+    }
   }
   player = [deck.pop()];
   dealer = [deck.pop()];
   player.push(deck.pop());
   dealer.push(deck.pop());
+  phase = 'opening';
+  cue();
+  render('Cards on the table','The dealer is dealing.');
+  await pace(620);
   phase = 'playing';
   const p = score(player) === 21, d = score(dealer) === 21;
-  if (p || d) return finish(p && d ? 'Double blackjack. Push.' : p ? 'Blackjack! You win.' : 'Dealer has blackjack.');
+  if (p || d) return finish(p && d ? 'push' : p ? 'win' : 'loss', p && d ? 'Double blackjack. Push.' : p ? 'Blackjack! You win.' : 'Dealer has blackjack.');
   render('Your move','Hit for another card or stand to keep your hand.');
   get('hit').focus();
 };
 get('hit').onclick = () => {
   if (phase !== 'playing') return;
   player.push(deck.pop());
-  if (score(player) > 21) return finish('Bust. Dealer wins.');
-  if (score(player) === 21) return stand();
+  cue();
+  if (score(player) > 21) return finish('loss','Bust. Dealer wins.');
   render('Your move','Hit for another card or stand to keep your hand.');
 };
 get('stand').onclick = stand;
